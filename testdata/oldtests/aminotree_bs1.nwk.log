@@ -1,0 +1,28 @@
+IQ-TREE multicore version 2.3.2 COVID-edition for Windows 64-bit built Apr  9 2024
+Developed by Bui Quang Minh, James Barbetti, Nguyen Lam Tung,
+Olga Chernomor, Heiko Schmidt, Dominik Schrempf, Michael Woodhams, Ly Trong Nhan, Thomas Wong
+
+Host:    LAPTOP-CKRSE9G4 (AVX2, FMA3, 5 GB RAM)
+Command: bin\iqtree2 --alisim Testing\aminotree_bs1 -m WAG -t Testing\aminotree_bs1.nwk -seed 20021114
+Seed:    20021114 (Using SPRNG - Scalable Parallel Random Number Generator)
+Time:    Wed Apr 24 14:28:15 2024
+Kernel:  AVX+FMA - 1 threads (8 CPU cores detected)
+
+[Alignment Simulator] Executing
+ - Tree filepath: Testing\aminotree_bs1.nwk
+ - Length of output sequences: 1000
+ - Model: WAG
+ - Number of output datasets: 1
+Simulating a sequence with branch-specific model named LG
+SUBSTITUTION PROCESS
+--------------------
+
+Model of substitution: WAG
+
+State frequencies: (model)
+
+Model of rate heterogeneity: Uniform
+
+[Alignment Simulator] Done
+Simulation time: 0.051s
+Date and Time: Wed Apr 24 14:28:15 2024

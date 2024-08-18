@@ -1,0 +1,43 @@
+IQ-TREE multicore version 2.3.2 COVID-edition for Windows 64-bit built Apr  9 2024
+Developed by Bui Quang Minh, James Barbetti, Nguyen Lam Tung,
+Olga Chernomor, Heiko Schmidt, Dominik Schrempf, Michael Woodhams, Ly Trong Nhan, Thomas Wong
+
+Host:    LAPTOP-CKRSE9G4 (AVX2, FMA3, 5 GB RAM)
+Command: bin\iqtree2 --alisim Testing\align_tree1 -m JC -t Testing\tree1.nwk -seed 20021114
+Seed:    20021114 (Using SPRNG - Scalable Parallel Random Number Generator)
+Time:    Mon Apr 22 17:14:23 2024
+Kernel:  AVX+FMA - 1 threads (8 CPU cores detected)
+
+[Alignment Simulator] Executing
+ - Tree filepath: Testing\tree1.nwk
+ - Length of output sequences: 1000
+ - Model: JC
+ - Number of output datasets: 1
+SUBSTITUTION PROCESS
+--------------------
+
+Model of substitution: JC
+
+Rate parameter R:
+
+  A-C: 1.000
+  A-G: 1.000
+  A-T: 1.000
+  C-G: 1.000
+  C-T: 1.000
+  G-T: 1.000
+
+State frequencies: (equal frequencies)
+
+Rate matrix Q:
+
+  A        -1     0.333     0.333     0.333
+  C     0.333        -1     0.333     0.333
+  G     0.333     0.333        -1     0.333
+  T     0.333     0.333     0.333        -1
+
+Model of rate heterogeneity: Uniform
+
+[Alignment Simulator] Done
+Simulation time: 0.047s
+Date and Time: Mon Apr 22 17:14:23 2024
