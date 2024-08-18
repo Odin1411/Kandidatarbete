@@ -1,0 +1,373 @@
+---
+title: "Visualize"
+author: "Olivia Buhr"
+date: "2024-05-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("tidyverse")
+library("ggtree")
+library("treeio")
+library("rjson")
+library("ggpubr")
+library("gtable")
+library("ggplot2")
+library("kableExtra")
+library("webshot")
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+iqtree <- "iqtree-2.3.2-Windows/Random/"
+getwd()
+
+myData = read.delim(paste0(iqtree,"r_sim_0.tree"),header =FALSE)
+print(myData)
+
+tree <-read.tree(file=paste0(iqtree,"r_sim_1.tree"))
+
+
+
+ggplot(tree, aes(x, y)) + geom_tree(aes(color="red"))+ theme_tree()+ geom_treescale()+ geom_tiplab(size=3)
+tree <- read.tree(file=paste0(iqtree,"r_sim_1.tree"))
+
+ggplot(tree, aes(x, y)) + geom_tree(aes(color="blue")) + theme_tree()+ geom_treescale()+ geom_tiplab(size=3)
+
+
+
+
+```{r}
+iqtree <- "iqtree-2.3.2-Windows/Random/"
+
+
+#myData = read.delim(paste0(iqtree,"testing.tree"),header =FALSE)
+#colnames(myData)
+#myData$V1
+
+#tree <- read.nhx(textConnection(myData$V1))
+#tree
+
+#ggtree(tree) + geom_tiplab() + 
+#  geom_label(aes(x=branch, label=model), fill='lightgreen') 
+
+#ggtree(tree,aes(color=model)) + geom_tiplab() #+ 
+   #geom_label(aes(x=branch, label=model), fill='lightgreen') 
+ 
+ 
+```
+
+#Test json
+
+
+```{r echo = FALSE}
+getwd()
+
+jsonfiles <-"Tester_results/"
+
+readfile <- function(filename, jsonfiles = "Tester_results/"){
+  p <- paste0(jsonfiles,filename)
+  result <- fromJSON(file = p)
+  return(result)
+  }
+  
+geth0 <- function(filename, jsonfiles = "Tester_results/"){
+   result <- readfile(filename, jsonfiles)
+   
+   h0 <- as.data.frame(cbind(Model =result$h0$model ,Loglikelihood =  result$h0$gllh  )) %>%
+     select(Model,Loglikelihood)
+  # print(h0)
+   
+   #h0 <-as.data.frame(result$h0)
+  
+  
+  
+  return(h0)
+}
+
+getresult <- function(filename, jsonfiles = "Tester_results/"){
+   result <- readfile(filename, jsonfiles)
+  
+  r <- as.data.frame(cbind(prior = result$prior, mltree = result$mltree, gllh = result$gllh))
+
+  h0 <-as.data.frame(result$h0)
+  c <- as.data.frame(cbind(Loglikelihood =  result$gllh ))  %>%
+     mutate(Tree = LETTERS[row_number()]) %>%
+     select(Tree,Loglikelihood)
+        #(h0 = result$h0$model, gllh0 = result$h0$gllh)
+ # print(c)
+  return(as.data.frame(c))
+}
+
+listlikelihood <- function(filename, jsonfiles = "Tester_results/"){
+    p <- paste0(jsonfiles,filename)
+  result <- fromJSON(file = p)
+  r <- as.data.frame(cbind(  gllh = result$gllh))
+  print(r)
+  h0 <-as.data.frame(result$h0)
+  
+  print(h0)
+  return(h0)
+}
+  
+
+
+plotresult <- function(filename,i, jsonfiles = "Tester_results/"){
+
+p <- paste0(jsonfiles,filename)
+result <- fromJSON(file = p)
+s <- result$mltree[i]
+truetree <- read.nhx(textConnection(result$truetree))
+truetree <- truetree %>% 
+mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+  mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+
+g1 <- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of 'true' tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+# + theme(legend.position = c(1, 0.5))
+
+tree <- read.nhx(textConnection(s))
+
+
+
+g2 <- ggtree(tree,aes(color=model)) + geom_tiplab()+ ggtitle("Plot of tree derived from algorithm") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))+ guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+#+ theme(legend.position = c(1.3, 0.4))
+ #theme(plot.margin = margin(2,.8,3,.8, "cm")) + theme(legend.position = c(1.3, 0.4))  +
+gridExtra::grid.arrange(g1,g2,ncol = 1)
+
+  
+}
+
+plotresult_compareall  <- function(filename,jsonfiles = "Tester_results/"){
+  ######compare all models#####
+
+file <- paste0(jsonfiles,filename)
+result <- fromJSON(file = file)
+
+tree1 <- result$mltree[1]
+tree2 <- result$mltree[2]
+tree3 <- result$mltree[3]
+tree4 <-result$mltree[4]
+tree5 <- result$mltree[5]
+
+  
+truetree <- read.nhx(textConnection(result$truetree))
+truetree <- truetree %>% 
+mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+  mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+tree1 <- read.nhx(textConnection(tree1))
+tree2 <- read.nhx(textConnection(tree2))
+tree3 <- read.nhx(textConnection(tree3))
+tree4 <- read.nhx(textConnection(tree4))
+tree5 <- read.nhx(textConnection(tree5))
+
+#for (i in 1:length(5)){
+  
+  g1 <- ggtree(tree1,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[1])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+  
+ g2 <- ggtree(tree2,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[2])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+  
+ g3 <- ggtree(tree3,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[3])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+ 
+ g4 <- ggtree(tree4,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[4])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+ 
+ g5 <- ggtree(tree5,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[5])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+
+g0<- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of 'true' tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3") ) +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+my_plot <- ggarrange(g0,g1,g2,g3,g4,g5,ncol =1)
+
+png_file <- paste0( "Plots/", sub("\\.json$", ".png",filename))
+#ggsave(png_file, plot = my_plot, width = 6, height = 8, dpi = 300)
+}
+
+plotresult_compare <- function(filename,i,j,jsonfiles = "Tester_results/"){
+
+file <- paste0(jsonfiles,filename)
+result <- fromJSON(file = file)
+tree1 <- result$mltree[i]
+tree2 <- result$mltree[j]
+truetree <- read.nhx(textConnection(result$truetree))
+truetree <- truetree %>% 
+mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+  mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+tree1 <- read.nhx(textConnection(tree1))
+tree2 <- read.nhx(textConnection(tree2))
+
+#print(getresult(filename))
+
+#print(cbind(c("tree1","tree2","true"),c(tree1,tree2,truetree) ))
+#print(as.data.frame(cbind(c("tree1","tree2","true"),c(tree1,tree2,truetree) )))
+g2 <- ggtree(tree1,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[i])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+ # theme(plot.margin = margin(2,.8,2,.8, "cm")) #+ theme(legend.position = c(1.3, 0.4))
+g3 <- ggtree(tree2,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[j])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3"))+
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1)))  
+#+ theme(legend.position = c(1.3, 0.4))
+#gridExtra::grid.arrange(g1,g2,g3,nrow = 1)
+g1<- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of 'true' tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"orange","purple","cyan3") ) +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+# + theme(plot.margin = margin(2,.8,3,.8, "cm"))
+#  theme(plot.margin = margin(2,.8,3,.8, "cm"))
+#ggarrange(g1,g2,g3,ncol =1, heights = c(9, 9,9))
+
+my_plot<- gridExtra::grid.arrange(g1,g2,g3,ncol =1, heights = c(4, 4,4))
+
+my_plot
+png_file <- paste0( "Plots/", sub("\\.json$", ".png",filename))
+#ggsave(png_file, plot = my_plot, width = 6, height = 8, dpi = 300)
+}
+
+
+```
+
+
+```{r}
+
+
+plot_table1 <- function(filename,jsonfiles = "Tester_results/") {
+
+  d1 <- geth0(filename,jsonfiles) 
+  k1 <- kable(d1, "html") %>%
+  kable_styling(full_width = FALSE,position = "left") %>%
+  column_spec(1:ncol(d1), width = "5cm")
+ # print(k1)
+  print(d1)
+  txt_file <- paste0( "Plots/", sub("\\.json$", "_h0.txt",filename))
+ # write.table(d1, file=txt_file, sep = "\t", quote = FALSE, row.names = FALSE)
+ 
+}
+
+plot_table2 <- function(filename,jsonfiles ="Tester_results/"){
+   d2 <- getresult(filename,jsonfiles)
+   k2 <- kable(d2, "html") %>%
+  kable_styling(full_width = FALSE,position = "left") %>%
+  column_spec(1:ncol(d2), width = "4cm")  # Specify column widths here
+  # print(k2)
+   #f<- paste0( "Plots/", sub("\\.json$", ".html",file))
+  # save_kable(
+ # k2,f)# Remove ".json" and add ".pdf"
+   print(d2)
+   txt_file <- paste0( "Plots/", sub("\\.json$", "_mlh.txt",filename))
+  # write.table(d2, file=txt_file, sep = "\t", quote = FALSE, row.names = FALSE)
+  
+}
+
+plot_all <- function(file,jsonfiles ="Tester_results/"){ 
+  plot_table1(file,jsonfiles)
+  plot_table2(file,jsonfiles)
+  plotresult_compareall(file,jsonfiles)
+  
+}
+
+plot_all2 <- function(file,i,j,jsonfiles="Tester_results/"){ 
+  plot_table1(file,jsonfiles)
+  plot_table2(file,jsonfiles)
+  plotresult_compare(file,i,j,jsonfiles)
+  
+}
+
+#plot_all2("test0_c.json",1,2)
+
+plot_all2("test2_c.json",1,2)
+
+plot_all2("test1_c.json",1,2)
+
+plot_all2("test0_c.json",1,2)
+
+#redo sim0_b and sim0_q
+
+plot_all2("sim1_b.json",1,2,"Results_2/")
+
+plot_all2("sim1_q.json",1,2,"Results_2/")
+
+#listlikelihood("test1_c.json")
+#plotresult("test1_c.json",2)
+
+
+#knitr::kable(d1
+ # list(d1, d2),
+ # caption = 'Two tables placed side by side.',
+ # booktabs = TRUE#, valign = 't'
+#)
+
+#knitr::kable(d2)
+#kbl(d2,booktabs = T) %>%
+#kable_styling(latex_options = "striped")
+
+#kbl(d1,booktabs = T) %>%
+#kable_styling(latex_options = "striped")
+
+
+#gridExtra::grid.arrange(k1, k2, ncol = 2)
+#knitr::kable(
+ # list(k1, k2)
+ # ,caption = 'Two tables placed side by side.',
+  # booktabs = TRUE#, valign = 't'
+#)
+
+#plotresult_compare("test2_c.json",1,2)
+
+
+#listlikelihood("sim0_b.json","Results_2/")
+#plotresult("sim0_b.json",2,"Results_2/")
+
+#listlikelihood("test0_b.json")
+#plotresult("test0_b.json",1)
+
+
+#listlikelihood("test1_b.json")
+#getresult("test1_b.json") %>%
+#  knitr::kable()
+#plotresult_compare("test1_b.json",1,2)
+
+
+#listlikelihood("test2_b.json")
+#plotresult_compare("test2_b.json",1,2)
+
+#listlikelihood("sim1_b.json","Results_2/")
+#plotresult("sim1_b.json",3,"Results_2/")
+
+#listlikelihood("sim1_q.json","Results_2/")
+#plotresult("sim1_q.json",2,"Results_2/")
+
+
+``` 
+
+
+
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

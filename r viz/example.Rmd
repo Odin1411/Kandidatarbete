@@ -1,0 +1,52 @@
+---
+title: "example"
+author: "Olivia Buhr"
+date: "2024-08-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+# Load required libraries
+library(ggtree)
+library(ggplot2)
+
+# Define the Newick format tree
+newick_tree <- "(A:0.1,B:0.2,(C:0.3,D:0.4):0.5);"
+
+# Read the tree
+tree <- read.tree(text = newick_tree)
+
+# Create the tree plot with enhanced aesthetics
+p <- ggtree(tree) + 
+  geom_tiplab(size=5, fontface="bold", color="black") + # Tip labels
+  geom_text(aes(label=round(branch.length, 2)), hjust=-0.3, size=4, color="gray") + # Branch lengths
+  theme_tree2() + # Use a different theme for better appearance
+  ggtitle("Enhanced Phylogenetic Tree") + # Title
+  theme(plot.title = element_text(size=15, face="bold", hjust=0.5), # Center title
+        axis.text = element_text(size=12), # Adjust axis text size
+        plot.margin = margin(1, 1, 1, 1, "cm")) + # Adjust margins
+  scale_color_manual(values=c("A"="#FF5733", "B"="#33FF57", "C"="#3357FF", "D"="#FF33A1")) # Custom colors
+
+# Display the tree
+print(p)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

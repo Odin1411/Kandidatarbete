@@ -1,0 +1,140 @@
+---
+title: "Viz MCMC"
+author: "Olivia Buhr"
+date: "2024-08-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r Most tot}
+
+
+create_most_tot_plot <- function(filesavename) {
+  most_tot_800 <- c(29,30,29,27,27,31,33,27,31,30,30,31,28,30,34,28,32,34,26,25,32,30,26,24,31,32,21,24,33,27,29,29,26,29,26,32,29,28,28,31,33,30,34,27,23,30,28,35,26,26)
+most_tot_500 <- c(27,23,27,30,27,22,30,24,28,25,21,29,23,26,22,24,30,23,28,29,24,29,26,23,30,26,21,24,26,29,29,27,24,28,26,31,26,25,23,23,29,23,28,25,27,28,21,30,28,27)
+most_tot_200 <- c(25,24,17,18,18,17,20,19,18,22,21,22,21,24,23,21,24,22,21,22,20,19,19,24,25,20,18,24,16,17,18,22,18,23,21,24,22,21,16,23,27,22,23,25,26,21,18,22,19,21)
+
+df <- as_tibble(cbind(most_tot_800,most_tot_500,most_tot_200)) %>%
+   mutate(percent800 = most_tot_800/38) %>%
+   mutate(percent500 = most_tot_500/38) %>%
+   mutate(percent200 = most_tot_200/38)
+
+df2 <- data.frame(
+  value = c(most_tot_200, most_tot_500, most_tot_800),
+  percent = c(most_tot_200/38, most_tot_500/38, most_tot_800/38),
+  group = factor(rep(c("200", "500", "800"), times = c(length(most_tot_200), length(most_tot_500), length(most_tot_800)))) 
+  
+)
+
+p <- ggplot(df2, aes(x = group, y = percent)) +
+  geom_boxplot( fill = "pink") +
+  labs(x = "Sequence length", y = "Fraction", title = " ") 
+
+p
+ggsave(filesavename, p, bg = "white")
+
+#print(df)
+#print(df2)
+
+#most_tot_800_df <- as_tibble(most_tot_800) %>%
+ # mutate(percent = value/38)
+
+#most_tot_800_df %>%
+#ggplot() + geom_boxplot(aes(y = percent), fill = "violet") +  labs(x = "", y ="Fraction")
+  return(p)
+}
+#create_most_tot_plot("most_tot.png")
+
+read_true_mod <- function(filename) {
+  # Initialize an empty list to store values and iterations
+  d <- list(value = character(), iteration = character())
+ 
+  
+  # Open the file for reading
+  filepath <- file.path("../Results_plots", filename)
+  con <- file(filepath, "r")
+  
+  # Skip the first line in the file
+  readLines(con, n = 1)
+  
+  # Read each remaining line of the file
+  while (TRUE) {
+    line <- readLines(con, n = 1, warn = FALSE)
+    if (length(line) == 0) break  # Exit loop at end of file
+    
+    line <- trimws(line)  # Trim whitespace
+    
+    if (nchar(line) > 1) {
+      split_line <- strsplit(line, ",")[[1]]
+      value <- split_line[1]
+      iteration <- split_line[2]
+      d$value <- c(d$value, value)
+      d$iteration <- c(d$iteration, iteration)
+    }
+  }
+  
+  # Close the file connection
+  close(con)
+  
+  # Print the list and the lengths of value and iteration
+  
+  d <- as_tibble(d)
+  d <- d %>%
+    mutate(value = as.numeric(value)) %>%
+    mutate(percent = value/4000)
+  
+  
+  print(length(d$value))
+  print(length(d$iteration))
+  return(d)
+ 
+}
+
+
+plot_true_mod <- function(filesavename) {
+  df1 <- read_true_mod("true_mod_800.txt")  %>%
+    mutate(seqlength = 800)
+  df2 <- read_true_mod("true_mod_500.txt")  %>%
+    mutate(seqlength = 500)
+  df3 <- read_true_mod("true_mod_200.txt")  %>%
+    mutate(seqlength = 200)
+  
+  df <- rbind(df1,df2,df3)
+  print(df)
+  
+p <- ggplot(df, aes(x = as.factor(seqlength), y = percent)) +
+  geom_boxplot( fill = "turquoise") +
+  labs(x = "Sequence length", y = "Fraction", title = " ") 
+
+p
+ggsave(filesavename, p, bg = "white")
+return(p)
+
+}
+
+
+
+plot_true_mod("true_mod.png")
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

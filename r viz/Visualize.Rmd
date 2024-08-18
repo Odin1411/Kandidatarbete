@@ -1,0 +1,1251 @@
+---
+title: "Visualize"
+author: "Olivia Buhr"
+date: "2024-05-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/olivi/OneDrive/Dokument/A Universitet/A Programmering/snakemake-tutorial')
+library("tidyverse")
+library("ggtree")
+library("treeio")
+library("rjson")
+library("ggpubr")
+library("gtable")
+library("ggplot2")
+library("kableExtra")
+library("webshot")
+library("ggplot2")
+library("tidyr")
+library("cowplot")
+library("dplyr")
+library("ape")
+#library("tryCatchLog")
+
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+iqtree <- "iqtree-2.3.2-Windows/Random/"
+getwd()
+
+myData = read.delim(paste0(iqtree,"r_sim_0.tree"),header =FALSE)
+print(myData)
+
+tree <-read.tree(file=paste0(iqtree,"r_sim_1.tree"))
+
+
+
+ggplot(tree, aes(x, y)) + geom_tree(aes(color="red"))+ theme_tree()+ geom_treescale()+ geom_tiplab(size=3)
+tree <- read.tree(file=paste0(iqtree,"r_sim_1.tree"))
+
+ggplot(tree, aes(x, y)) + geom_tree(aes(color="blue")) + theme_tree()+ geom_treescale()+ geom_tiplab(size=3)
+
+
+
+
+```{r}
+iqtree <- "iqtree-2.3.2-Windows/Random/"
+
+
+#myData = read.delim(paste0(iqtree,"testing.tree"),header =FALSE)
+#colnames(myData)
+#myData$V1
+
+#tree <- read.nhx(textConnection(myData$V1))
+#tree
+
+#ggtree(tree) + geom_tiplab() + 
+#  geom_label(aes(x=branch, label=model), fill='lightgreen') 
+
+#ggtree(tree,aes(color=model)) + geom_tiplab() #+ 
+   #geom_label(aes(x=branch, label=model), fill='lightgreen') 
+ 
+ 
+```
+
+#Test json
+
+
+```{r echo = FALSE}
+getwd()
+jsonfiles = "results/"
+mcmcfiles = "results_mh/"
+
+
+readfile <- function(filename, jsonfiles = "results/"){
+  json_file <- paste0(jsonfiles,filename)
+  result <- fromJSON(file = json_file)
+  return(result)
+  }
+  
+geth0 <- function(filename){
+   result <- readfile(filename)
+   h0 <- as.data.frame(cbind(Model =result$h0$model ,gllh =  result$h0$gllh  )) %>%
+     select(Model,gllh) %>%
+     mutate(gllh = as.numeric(gllh)) #very important
+  # print(h0)
+   #h0 <-as.data.frame(result$h0)
+  return(h0)
+}
+
+get_truetree <- function(filename) {
+   jsonresult <- readfile(filename)
+   truetree <- read.nhx(textConnection(jsonresult$truetree))
+   truetree <- truetree %>% 
+   mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+   mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+   
+   return(truetree)
+}
+
+
+getresult <- function(filename){
+   result <- readfile(filename)
+   r <- as.data.frame(cbind( mltree = result$mltree, gllh = result$gllh))
+   h0 <-as.data.frame(result$h0)
+   r <- r  %>%
+     mutate(Tree = LETTERS[row_number()]) %>%
+     mutate(truetree =result$truetree)%>%
+     mutate(gllh = as.numeric(gllh)) #very important
+    # select(Tree,gllh)
+        #(h0 = result$h0$model, gllh0 = result$h0$gllh)
+ # print(c)
+  
+  return(r)
+}
+
+listlikelihood <- function(filename){
+  result <- getresult(filename)
+  df <- as.data.frame(cbind(  gllh = result$gllh))
+  print(df)
+  h0 <-as.data.frame(result$h0)
+  print(h0)
+  
+}
+
+
+get_mltree <- function(filename){
+  result <- getresult(filename)
+  mltree <- result %>%
+    arrange(desc(gllh)) %>%
+    head(1)
+  return(mltree)
+}
+
+get_n_mltree <- function(filename){
+  result <- getresult(filename)
+  mltree <- result %>%
+    arrange(desc(gllh)) %>%
+    head(1)
+  return(mltree)
+}
+
+
+
+plotresult <- function(filename){
+  jsonfile <- paste0(jsonfiles,filename)
+  result <- fromJSON(file = jsonfile)
+  mltree <- get_mltree(filename)$mltree
+  truetree <- get_truetree(filename)
+
+g1 <- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of true tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+# + theme(legend.position = c(1, 0.5))
+tree <- read.nhx(textConnection(mltree))
+g2 <- ggtree(tree,aes(color=model)) + geom_tiplab()+ ggtitle("Plot of tree derived from greedy algorithm") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))+ guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+#+ theme(legend.position = c(1.3, 0.4))
+ #theme(plot.margin = margin(2,.8,3,.8, "cm")) + theme(legend.position = c(1.3, 0.4))  +
+gridExtra::grid.arrange(g1,g2,ncol = 1)
+
+  
+}
+
+plotresult_compareall  <- function(filename,jsonfiles = "results/"){
+  ######compare all models#####
+
+file <- paste0(jsonfiles,filename)
+result <- fromJSON(file = file)
+
+tree1 <- result$mltree[1]
+tree2 <- result$mltree[2]
+tree3 <- result$mltree[3]
+tree4 <-result$mltree[4]
+tree5 <- result$mltree[5]
+
+  
+truetree <- read.nhx(textConnection(result$truetree))
+truetree <- truetree %>% 
+mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+  mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+tree1 <- read.nhx(textConnection(tree1))
+tree2 <- read.nhx(textConnection(tree2))
+tree3 <- read.nhx(textConnection(tree3))
+tree4 <- read.nhx(textConnection(tree4))
+tree5 <- read.nhx(textConnection(tree5))
+
+#for (i in 1:length(5)){
+  
+  g1 <- ggtree(tree1,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[1])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+  
+ g2 <- ggtree(tree2,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[2])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+  
+ g3 <- ggtree(tree3,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[3])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+ 
+ g4 <- ggtree(tree4,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[4])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+ 
+ g5 <- ggtree(tree5,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[5])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+
+g0<- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of 'true' tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3") ) +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+
+my_plot <- ggarrange(g0,g1,g2,g3,g4,g5,ncol =1)
+
+png_file <- paste0( "Plots/", sub("\\.json$", ".png",filename))
+#ggsave(png_file, plot = my_plot, width = 6, height = 8, dpi = 300)
+}
+
+plotresult_compare <- function(filename,i,j,jsonfiles = "results/"){
+
+file <- paste0(jsonfiles,filename)
+result <- fromJSON(file = file)
+tree1 <- result$mltree[i]
+tree2 <- result$mltree[j]
+truetree <- read.nhx(textConnection(result$truetree))
+truetree <- truetree %>% 
+mutate(model = ifelse(model =="mtMam" , "MtMAM", model)) %>%
+  mutate(model = ifelse(model =="mtART" , "mtArt", model)) 
+tree1 <- read.nhx(textConnection(tree1))
+tree2 <- read.nhx(textConnection(tree2))
+
+g2 <- ggtree(tree1,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[i])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                    values=c("brown2", "green" ,"yellow","purple","cyan3"))  +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+ # theme(plot.margin = margin(2,.8,2,.8, "cm")) #+ theme(legend.position = c(1.3, 0.4))
+g3 <- ggtree(tree2,aes(color=model)) + geom_tiplab()+ ggtitle(sprintf("Plot of tree %s derived from algorithm",LETTERS[j])) + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3"))+
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1)))  
+#+ theme(legend.position = c(1.3, 0.4))
+#gridExtra::grid.arrange(g1,g2,g3,nrow = 1)
+g1<- ggtree(truetree,aes(color=model)) + geom_tiplab() + ggtitle("Plot of 'true' tree") + scale_color_manual(breaks = c("WAG","cpREV","LG" ,"mtArt", "MtMAM"), 
+                       values=c("brown2", "green" ,"yellow","purple","cyan3") ) +
+  guides(color = guide_legend(override.aes = aes(label = "", alpha = 1))) 
+# + theme(plot.margin = margin(2,.8,3,.8, "cm"))
+#  theme(plot.margin = margin(2,.8,3,.8, "cm"))
+#ggarrange(g1,g2,g3,ncol =1, heights = c(9, 9,9))
+
+my_plot<- gridExtra::grid.arrange(g1,g2,g3,ncol =1, heights = c(4, 4,4))
+
+my_plot
+png_file <- paste0( "Plots/", sub("\\.json$", ".png",filename))
+#ggsave(png_file, plot = my_plot, width = 6, height = 8, dpi = 300)
+}
+
+
+plot_table1 <- function(filename,jsonfiles = "results/") {
+
+  d1 <- geth0(filename,jsonfiles) 
+  k1 <- kable(d1, "html") %>%
+  kable_styling(full_width = FALSE,position = "left") %>%
+  column_spec(1:ncol(d1), width = "5cm")
+  k1
+  
+  txt_file <- paste0( "Plots/", sub("\\.json$", "_h0.txt",filename))
+  write.table(d1, file=txt_file, sep = "\t", quote = FALSE, row.names = FALSE)
+ 
+}
+
+plot_table2 <- function(filename,jsonfiles ="results/"){
+   d2 <- getresult(filename,jsonfiles)
+   k2 <- kable(d2, "html") %>%
+  kable_styling(full_width = FALSE,position = "left") %>%
+  column_spec(1:ncol(d2), width = "4cm")  # Specify column widths here
+   k2
+   #f<- paste0( "Plots/", sub("\\.json$", ".html",file))
+  # save_kable(
+ # k2,f)# Remove ".json" and add ".pdf"
+   txt_file <- paste0( "Plots/", sub("\\.json$", "_mlh.txt",filename))
+   write.table(d2, file=txt_file, sep = "\t", quote = FALSE, row.names = FALSE)
+  
+}
+
+plot_all <- function(file,jsonfiles ="results/"){ 
+  plot_table1(file,jsonfiles)
+  plot_table2(file,jsonfiles)
+  plotresult_compareall(file,jsonfiles)
+  
+}
+
+plot_all2 <- function(file,i,j,jsonfiles="results/"){ 
+  plot_table1(file,jsonfiles)
+  plot_table2(file,jsonfiles)
+#  plotresult_compare(file,i,j,jsonfiles)
+  
+}
+
+
+```
+
+```{r}
+
+getwd()
+
+
+#listlikelihood("sim146.800.json")
+#get_mltree("sim159.200.json")
+#plotresult("sim171.200.json")
+
+
+get_ncorrect <- function(df) {
+   n_corr <- df %>%
+    mutate(n_correct = ifelse( model.x ==  model.y, 1, 0)) %>%
+    summarize(n = sum(n_correct)/nrow(df)) 
+  
+  return(n_corr$n)
+  
+}
+
+compare_likelihood <- function(jsonfile) {
+  h0 <- geth0(jsonfile)
+  ml_result <- get_mltree(jsonfile)
+  ml_gllh <- ml_result$gllh
+  h0_df <- h0 %>%
+  arrange(desc(gllh)) %>%
+  head(1)
+  
+  h0_gllh <- h0_df$gllh
+  return(c(h0_gllh, ml_gllh))
+  
+}
+
+likelihood_ratio_test <- function(jsonfile) {
+  #branches = 2n-2
+  n_leaves = 20
+  parameters = 2*n_leaves - 3 #(-1 because of our restriction)
+  h0 <- geth0(jsonfile)
+  chi_squared <- 50.998
+  
+  ml_result <- get_mltree(jsonfile)
+  ml_gllh <- ml_result$gllh
+  h0_df <- h0 %>%
+  arrange(desc(gllh)) %>%
+  head(1)
+  
+  h0_gllh <- h0_df$gllh
+  LR <- -2*(h0_gllh-ml_gllh)
+
+  return(LR > chi_squared) #if reject null -> return true
+}
+
+prepare_data <- function(jsonfile) {
+
+  ml_result <- get_mltree(jsonfile)
+ # print(ml_result)
+  truetree<-  get_truetree(jsonfile)
+  mltree <- read.nhx(textConnection(ml_result$mltree))
+
+  mltree_df <- as_tibble(mltree) %>% 
+    filter(parent != node) #remove root-node
+  
+  truetree_df <- as_tibble(truetree) %>% 
+    filter(parent != node) #remove root-node
+ 
+  #merge truetree and mltree into one dataset
+  df <- merge(x = truetree_df, y = mltree_df, by = "node", all = TRUE) %>%
+    filter(branch.length.x == branch.length.y) #sanity check
+  if (nrow(df) != 38){
+    print("something went wrong")
+    return()
+  }
+  
+  
+  return(df)
+  
+}
+
+
+
+check_homogenity <- function(jsonfile) {
+  ###returns true if tree is homogeneous""""
+ 
+ # print(ml_result)
+
+  truetree<-  get_truetree(jsonfile)
+  
+  truetree_df <- as_tibble(truetree) %>% 
+    filter(parent != node) #remove root-node
+  
+  nmodels <- truetree_df %>%
+    group_by(model) %>%
+    count(model) %>%
+    nrow()
+  
+  if (nmodels == 1){
+    return(1)
+  }
+    
+  return(0)
+  
+  
+}
+
+
+count_models_ml <- function(jsonfile){
+  
+  
+  ml_result <- get_mltree(jsonfile)
+ # print(ml_result)
+  mltree <- read.nhx(textConnection(ml_result$mltree))
+
+  mltree_df <- as_tibble(mltree) %>% 
+    filter(parent != node) #remove root-node
+  
+  nmodels <- mltree_df %>%
+    group_by(model) %>%
+    count(model) %>%
+     arrange(desc(n)) 
+  
+
+  
+  sum_n_except_most_frequent <- nmodels %>%
+  tail(-1) %>%
+    ungroup() %>%
+  summarize(total = sum(n))
+  
+# Print the result
+# print(sum_n_except_most_frequent)
+ 
+# sum_n_value <- sum_n_except_most_frequent$total
+
+  
+ 
+  return(nrow(nmodels))
+  
+  
+}
+
+count_models <- function(jsonfile) {
+   
+   
+ # print(ml_result)
+  truetree<-  get_truetree(jsonfile)
+  
+  truetree_df <- as_tibble(truetree) %>% 
+    filter(parent != node) #remove rootnode
+  
+
+  
+  nmodels <- truetree_df %>%
+    group_by(model) %>%
+    count(model) %>%
+     arrange(desc(n)) 
+  
+
+  sum_n_except_most_frequent <- nmodels %>%
+  tail(-1) %>%
+    ungroup() %>%
+  summarize(total = sum(n))
+  
+# Print the result
+# print(sum_n_except_most_frequent)
+ 
+ sum_n_value <- sum_n_except_most_frequent$total
+# sum_n_value/38
+  
+  
+  return(nrow(nmodels))
+}
+
+
+plot_correct <- function(tot_corr){
+ df<- as_tibble(tot_corr) %>%
+     mutate(n =row_number()) 
+ print("hejhopp")
+ print(df)
+ df %>%
+   ggplot(aes(x=n,y=tot_corr)) + geom_line() %>%
+   return()
+    
+    
+  
+}
+
+    
+analyse_result <- function(L) {
+  length <- L 
+  lratio_array  = c()
+  tot_corr = c()
+  n_start <- 50
+  n_end <- 519 #519
+  
+  model_df <- c()
+  n_different_models <- c()
+  
+  model_df_ml <- c()
+  n_different_models_ml <- c()
+  
+  
+  all_data <- c()
+  ml_gllh_array <- c()
+  h0_gllh_array <- c()
+
+  for(i in n_start: n_end) {
+    sim <-paste0("sim",i)
+    jsonfile <- paste0(paste(sim,length,sep="."),".json")
+  
+    df <- prepare_data(jsonfile)
+    if (check_homogenity(jsonfile)){
+      print("skip file")
+     # print(jsonfile)
+      
+    }
+    else{
+      likelihoods <- compare_likelihood(jsonfile)
+      h0_gllh_array <- c(h0_gllh_array, likelihoods[1])
+      ml_gllh_array <- c(ml_gllh_array,likelihoods[2])
+      
+      n_different_models <- c(n_different_models ,count_models(jsonfile))
+      n_different_models_ml <- c(n_different_models_ml,count_models_ml(jsonfile))
+    
+      
+      df <- df %>%
+       mutate(datapoint = i)
+      
+      all_data <- rbind(all_data,df) 
+    
+      
+      
+      tot_corr <- c(tot_corr, get_ncorrect(df))
+      lratio_array <-c(lratio_array,(likelihood_ratio_test(jsonfile)))
+      
+    }
+    
+   # plotresult(jsonfile)
+  #  print(likelihood_ratio_test(jsonfile))
+  
+    
+  }
+  #print(plot_correct(tot_corr))
+  return(tot_corr)
+  return(cbind(true = n_different_models,ml = n_different_models_ml))
+  
+   #print(percent_difference)
+  # print(n_different_models)
+   
+  # print(length(n_different_models))
+   
+ #  print("true mean median nmodel:")
+ ## print(mean(n_different_models))
+  # print(median(n_different_models))
+   
+  #print("ML mean median nmodel:")
+  # print(mean(n_different_models_ml))
+ # print(median(n_different_models_ml))
+   
+   # print(n_different_models)
+    #  print(n_different_models_ml)
+   
+
+   
+   return(as_tibble(all_data))
+    
+    
+  
+    df <- as_tibble(cbind(cbind(h0_gllh=h0_gllh_array,ml_gllh = ml_gllh_array),lratio = lratio_array))%>%
+      mutate(n =row_number()) %>%
+      mutate(lratio = as.factor(lratio))
+    
+    #df %>%
+      #mutate(difference =  ml_gllh -h0_gllh) %>%
+   # ggplot(aes(x =n,y=difference))  +geom_point() +ylab('Difference in log likelihood')+xlab('simulation n') +ggtitle(paste0("Sequencelength " , L) )
+    
+    diffplot <-df %>%
+      mutate(difference =  ml_gllh -h0_gllh) %>%
+    ggplot(aes(x =n,y=difference,fill=lratio)) + geom_bar(stat = "identity") +ylab('\u394lnL')+xlab('Simulation n') +ggtitle(paste0("Sequence length " , L) ) +labs(
+       fill = "Reject null hypothesis") +  scale_fill_manual(values = c("darkblue","red"),  # Customize colors
+    labels = c("False", "True") ) +  
+  geom_hline(yintercept  = 25.5, color = "black", linetype = "dashed", size = 1)
+    
+    
+    df %>%
+      mutate(difference =  ml_gllh -h0_gllh) %>%
+      summarize(mean_diff = mean(difference),median_diff = median(difference)) %>%
+      print()
+    
+  #  return(diffplot)
+    
+    
+
+#df %>%
+   # gather(key,value, h0_gllh, ml_gllh) %>%
+   #ggplot(aes(x=n, y=value, colour=key)) +
+    # geom_line() +  ylab('Log likelihood')+xlab('simulation') # + geom_point() #+ theme(aspect.ratio=1/7)  
+
+
+
+
+
+      
+ # print(length(tot_corr))
+ # print(mean(tot_corr))
+ # print(median(tot_corr))
+ # print(sum(lratio_array == TRUE ))
+  
+ 
+ # print(tree_df,n=40)
+ 
+}
+
+
+get_n_homogeneous <- function() {
+  length <- 800 
+  lratio_array  = c()
+  het_files = c()
+  tot_h <- 0 
+  n_start <- 50
+  n_end <- 499
+  for(i in n_start: n_end) {
+    sim <-paste0("sim",i)
+    jsonfile <- paste0(paste(sim,length,sep="."),".json")
+    
+    h <- check_homogenity(jsonfile)
+    if (h==1) {
+      het_files = c(het_files,jsonfile)
+    }
+    tot_h <- tot_h + h
+    
+  }
+  print(tot_h)
+  print(het_files)
+ 
+ # print(tree_df,n=40)
+ 
+  
+}
+
+
+
+plot_diff_models <- function(df, fname) {
+  
+  
+  #x =truetree, y = ML_tree
+  
+  df <- df %>%
+    group_by(datapoint) %>%
+    select(datapoint,model.y)
+  
+df_nmod <-df %>%
+  group_by(datapoint) %>%
+  count(model.y) %>%
+  summarise(n_models = n()) %>%
+  ungroup()
+
+print(df_nmod)
+  
+
+# Summarise the data
+df_summary <- df %>%
+  group_by(datapoint, model.y) %>%
+  summarise(count = n()) %>%
+  ungroup()  
+
+
+print(df_summary)
+
+#df_summary <- df_summary %>%
+# full_join(df_nmod, by = datapoint)
+
+
+# Create the bar plot with counts
+g <- ggplot(df_summary, aes(x = factor(datapoint), y = count, fill = model.y)) +
+ 
+  geom_bar(stat = "identity", position = "fill",width = 1) +  # Use "stack" to show counts
+  labs(x = "ML tree", y = "Percent of branches", fill = "Model") +
+  theme_minimal() +
+  theme(axis.text.x = element_text( hjust = 1)) +
+scale_x_discrete(breaks = seq(0,50, by = 5)) +
+scale_fill_manual("legend", values =c("cpREV" = "orangered2", 
+  "LG" = "yellow",   
+  "mtArt" = "green4", 
+  "MtMAM" = "turquoise2", 
+  "WAG" = "mediumorchid")    )
+   
+ggsave(fname, g, bg = "white")
+
+
+  return(g)
+
+# Create a long format data frame
+#df_long <- df_diff_model %>%
+ # pivot_longer(c( n_different_models, n_different_models_ml), names_to="ml" ,values_to = "n_different_models") %>%
+  #mutate(ml = ifelse(ml == "n_different_models_ml",TRUE,FALSE)) 
+  
+  
+
+ # Reshape the data for plotting
+
+
+
+}
+
+###############################################################################################################
+#
+
+
+
+
+
+plot_tot_corr <- function(){
+  df1 <- analyse_result(200)
+df2 <- analyse_result(500)
+df3 <- analyse_result(800)
+
+d1 <- as_tibble( df1) %>%
+  mutate(n = row_number()) %>%
+  mutate(seq_length = 200)
+
+d2 <- as_tibble( df2) %>%
+   mutate(n = row_number()) %>%
+  mutate(seq_length = 500)
+
+d3 <- as_tibble(df3) %>%
+   mutate(n = row_number()) %>%
+  mutate(seq_length = 800)
+
+data <- as_tibble(rbind(d1,d2,d3))
+print(data)
+
+p<- data %>%
+  ggplot() + geom_boxplot(fill="lightblue",aes(x = as.factor(seq_length),y=value)) +labs(title="", x = "Sequence length", y = "Fraction of branches")
+
+p
+ggsave("percent_corr.png", p, bg = "white")
+
+}
+
+# Basic piechart
+#p <- data %>%
+#  filter(type == "ml") %>%
+#  ggplot( aes(x=n_mod,fill=n_mod)) +
+#  geom_bar(  width=1, color="white") +
+ # coord_polar("y", start=0) +
+ #  facet_wrap(~seq_length) + 
+ # theme_void() # remove background, grid, numeric labels
+
+#p
+
+plot_nmod_bar <- function(df1,df2,df3){ 
+  d1 <- as_tibble(df1) %>%
+  mutate(n = row_number()) %>%
+  pivot_longer(c(true,ml),names_to  ="type", values_to = "n_mod") %>%
+  mutate(seq_length = 200)
+
+d2 <- as_tibble(df2) %>%
+   mutate(n = row_number()) %>%
+   pivot_longer(c(true,ml),names_to  ="type", values_to = "n_mod") %>%
+  mutate(seq_length = 500)
+
+d3 <- as_tibble(df3) %>%
+   mutate(n = row_number()) %>%
+   pivot_longer(c(true,ml),names_to  ="type", values_to = "n_mod") %>%
+  mutate(seq_length = 800)
+
+data <- as_tibble(rbind(d1,d2,d3))
+  
+  plot <- data %>%
+  ggplot( aes(x=n_mod,fill = type)) +
+  geom_bar(position = position_dodge2(preserve = "single")) +
+  facet_wrap(~seq_length) +  
+ labs(x = "n models", y ="Count", fill = "n models") + scale_fill_manual(name = "Tree", labels = c("ML", "True"), values = c("purple", "coral")) #scale_fill_discrete(name = "Tree", labels = c("ML", "True")) 
+
+
+plot
+ggsave("Nmodels_bar.png", plot, bg = "white")
+}
+
+
+ 
+
+#scale_fill_manual(values = c("purple", "coral"))
+
+#fill = type
+#position="dodge"
+
+
+#x %>%
+#plot<-ggplot( aes(x= n_mod,  group=type)) + 
+ #   geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") +
+  #  geom_text(aes( label = scales::percent(..prop..),
+                  # y= ..prop.. ), stat= "count", vjust = -.5) +
+  #  labs(y = "Percent", fill="day") +
+  #  facet_grid(~seq_length) +
+  #  scale_y_continuous(labels = scales::percent)
+    
+#plot 
+#plot <- x%>%
+ #  ggplot( aes(x = n_mod, y = perc)) + geom_bar(stat = "identity") + 
+  #facet_wrap(~seq_length) +  scale_fill_manual(values = c("purple", "coral"))
+  
+#plot
+#ggplot( aes(x=n_mod,fill = type,fill= type)) +
+#  geom_bar(stat = "prop",position = position_dodge2(preserve = "single")) +
+  
+#ggplot( aes(x = as.factor(seq_length), y = n_mod, fill = type)) +
+ # geom_boxplot(position = position_dodge(width = 0.75)) +
+ # labs(x = "Sequence length", y = "Number of models", fill = "Type") +
+ # theme_minimal() +  scale_fill_discrete(name = "Model assignment", labels = c("ML", "True"))
+
+
+# ggsave("Nmodels.png", plot, bg = "white")
+# plot
+
+#g1 <-plot_diff_models(df1,"ML200_new2.png")
+#print(g1)
+#g2 <- plot_diff_models(df2,"ML500_new2.png")
+#print(g2)
+#g3 <- plot_diff_models(df3,"ML800_new2.png")
+#print(g3)
+
+
+
+
+
+
+
+
+
+
+homo_mean <- c(13.1, 10.4, 8.89)
+homo_median <- c(13.5,9.87,8.32 )
+hetero_mean <- c(55.5, 118, 182) #182
+hetero_median <- c(39.6,77.3,117 )
+lnl_diff <- as.tibble(cbind(homo_mean,homo_median,hetero_mean,hetero_median)) %>%
+  mutate(n =c(200,500,800))
+lnl_diff_long <- lnl_diff %>%
+  pivot_longer(cols = -n, names_to = "variable", values_to = "value")
+lnl_diff_long <- lnl_diff_long %>%
+  mutate(type = ifelse(grepl("median", variable), "median", "mean"),
+         group = ifelse(grepl("homo", variable), "homogeneous", "heterogeneous"))
+#Mean and Median \u394lnL of Homogeneous and Heterogeneous Trees
+# Create the plot
+diffplot <- ggplot(lnl_diff_long, aes(x = n, y = value, color = group, linetype = type)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_linetype_manual(values = c("mean" = "solid", "median" = "dashed")) +
+  labs(title = "",   
+       x = "Sequence length",
+       y = "\u394lnL",
+       color = "Group",
+       linetype = "Statistic") +
+  theme_minimal() +
+  theme(text = element_text(size = 12)) +
+  scale_color_manual(values = c("homogeneous" = "darkslategray2", "heterogeneous" = "brown3"))
+  
+
+
+
+
+
+
+#plot_grid(iris1, iris2, labels = "AUTO")
+
+seq_length =c(200,500,800)
+number_of_samples = c(50,50,50)
+reject_null = c(0,0,0)
+percent_correct = c(0.5642105,0.6847368,0.7563158)
+
+df <- data.frame(seq_length,number_of_samples,reject_null,percent_correct) 
+colnames(df) <- c('Sequence length','Number of trees','Rejected null hypotheses', 'Proportion of correctly assigned branches') 
+df %>% knitr::kable(align = "lccr")
+
+#get_n_heterogeneous()
+seq_length =c(200,500,800)
+number_of_samples = c(450,450,450)
+reject_null = c(325,369,391)
+percent_correct = c(0.6063743,0.7419883,0.8042105)
+
+#df <- data.frame(seq_length,number_of_samples,reject_null,percent_correct) 
+#colnames(df) <- c('Sequence length','Number of trees','Rejected null hypotheses', 'Proportion of correctly assigned branches') 
+#df %>% knitr::kable(align = "lccr")
+#analyse_result()
+getwd()
+#plotresult("sim245.800.json")
+#truetree<-  get_truetree("sim171.200.json")
+
+
+``` 
+
+
+```{r MCMC, echo = FALSE}
+
+read_acceptratio <- function(filename) {
+   for (i in 1:4){
+    
+    gllh <- c()
+    tree <- c() 
+    
+    f<- paste0(mcmcfiles,paste0(paste(filename,i,sep ="_"),"_acceptratio.txt"))
+    accept_array <- readLines(f, n = -1, skipNul = FALSE)
+  
+    
+    clean_accept_array  <- tail(accept_array ,-1000)
+    
+    
+    
+    if (i==1) {
+      df <- as_tibble(clean_accept_array) 
+    
+      
+    }
+      
+    else {
+       df <- add_row(df,value = clean_accept_array)
+    }
+  
+   }
+  df <- df %>%
+      mutate(accept =  as.numeric(value)) %>%
+      summarize(acceptratio = mean(accept,na.rm =TRUE))
+ 
+  return(df$acceptratio)
+}
+read_trace <- function(filename){
+  
+  for (i in 1:4){
+    
+    gllh <- c()
+    tree <- c() 
+    
+    f<- paste0(mcmcfiles,paste0(paste(filename,i,sep ="_"),"_trace.txt"))
+    trace <- readLines(f, n = -1, skipNul = FALSE)
+  
+   
+    clean_trace <- tail(trace,-1001)
+   
+    
+    for (j in 1 :  1000){
+    
+      vector <- strsplit(clean_trace[j],' ')
+      gllh <- c(gllh,vector[[1]][1])
+      tree <-  c(tree,vector[[1]][2])
+    }
+    
+    if (i==1) {
+      df <- as_tibble(cbind(gllh,tree))
+    }
+      
+    else {
+       df <- add_row(df,gllh,tree)
+    }
+    
+    
+  }
+  df <- df %>%
+    mutate(gllh = as.numeric(gllh))
+  
+ # df %>%
+   # print(n=10)
+  
+}
+
+analyse_branches <- function(trace,simfile) {
+  
+  i <- 0
+  #trees <- lapply(trace$tree, function(tree) read.nhx(textConnection(tree))
+ 
+ 
+  start.time <- Sys.time()
+  for (tree in trace$tree) {
+    #textConnection
+     if (TRUE) {
+       
+      tree_connection <- textConnection(tree)
+
+# Read the tree directly from the connection
+      
+      t1 <- read.nhx(tree_connection)
+
+# Close the connection
+      close(tree_connection)
+      
+       t1 <- t1 %>%
+           as_tibble() %>%
+          filter(parent != node)  %>%
+          mutate(iteration = i ) %>%
+          select(node,model,iteration)
+       
+       
+        if (i==0) {
+       trace_df <-t1 
+     }
+    else{
+      trace_df <- rbind(trace_df,t1)
+      
+     }
+      
+    }
+    
+     i <- i+1
+     
+     
+     
+  # get_truetree 
+     
+    
+}
+ # print(trace_df,n=60)
+   df <-trace_df %>%
+     ungroup()  %>%
+   group_by(node, model) %>%
+  summarise(count = n(), .groups = 'drop')
+    
+   
+   
+ 
+   end.time <- Sys.time()
+    time.taken <- round(end.time - start.time,2)
+    print(time.taken)
+   return(df)
+ # print(t1)
+  
+}
+
+
+
+anlyze_most <- function(df,truetree) {
+ #join by node
+ # print(df,n=50)
+ # print(truetree)
+  max_counts <- df%>%
+  ungroup()%>%
+  group_by(node) %>%
+  slice_max(order_by = count, n = 1, with_ties = FALSE) %>%
+  ungroup()
+  
+ 
+  joined <- max_counts %>%
+    full_join(truetree,by = join_by(node) )
+ # print(joined)
+  joined<- joined %>%
+    mutate(model_identified = ifelse(model.x == model.y,1,0))
+    #x is mc y is true
+ # print(joined, n=50)
+  
+  n_identified <-joined %>%
+    ungroup()%>%
+    summarize(sum = sum(model_identified))
+#  print(n_identified)
+  return(n_identified$sum)
+  
+  #fulljoin(node,node)
+  #check the most common model
+  #check if that model equals the true model
+  
+  #
+    
+}
+
+
+anlyze_truemodel <- function(df,truetree) {
+
+  joined <- df %>%
+    full_join(truetree,by = join_by(node) )
+ # print(joined)
+  joined<- joined %>%
+    mutate(model_identified = ifelse(model.x == model.y,1,0))
+  
+  joined<- joined %>%
+    filter(model_identified == 1) 
+   
+
+   count_df <- joined %>%
+    select(count)
+  
+   count_vec <- c(count_df$count, rep(0, 38 - length(count_df$count)))
+   
+   return(count_vec)
+  
+    #x is mc y is true
+ # print(joined, n=50)
+
+  
+  #fulljoin(node,node)
+  #check the most common model
+  #check if that model equals the true model
+  
+  #
+    
+}
+
+
+  
+ # trace <- readLines(f, n = -1, skipNul = FALSE)
+  
+ # print(trace)
+
+get_truetree_mc <- function(simfile){
+   json_file <- paste0(paste0(mcmcfiles,simfile),"_1.json")
+  print(json_file)
+  result <- fromJSON(file = json_file)
+  truetree <- read.nhx(textConnection(result$truetree )) %>%
+    as_tibble() %>%
+    filter(parent != node) 
+  
+  return(truetree)
+}
+
+
+analyze_acceptratio <- function(L){
+  
+
+  length <- L 
+  lratio_array  = c()
+  acceptratios = c()
+  n_start <- 0
+  n_end <- 49
+  ntrees = 0
+  for(i in n_start: n_end) {
+    sim <-paste0("sim",i)
+    simfile <- paste0(paste(sim,length,sep="."))
+    f <- paste0(getwd(),paste0("/results_mh/", simfile))
+    
+     if(file.exists(file = paste0(f,"_1_trace.txt")) && file.exists(file = paste0(f,"_2_trace.txt")) && file.exists(file = paste0(f,"_3_trace.txt")) && file.exists(file = paste0(f,"_4_trace.txt"))){
+      
+      ntrees = ntrees +1
+     
+       ar <- read_acceptratio(simfile)
+       acceptratios <- c(acceptratios, ar)
+       
+      }
+      
+  }
+  print(ntrees)
+  print( acceptratios)
+  print(mean(acceptratios,na.rm =TRUE))
+}
+
+analyze_acceptratio(200)
+analyze_acceptratio(500)
+analyze_acceptratio(800)
+
+
+create_true_model <- function(L,filesavename){
+  length <- L 
+ 
+  true_model_df <-c()
+  n_start <- 0
+  n_end <- 49
+  ntrees = 0
+  for(i in n_start: n_end) {
+    sim <-paste0("sim",i)
+    simfile <- paste0(paste(sim,length,sep="."))
+    
+    f <- paste0(getwd(),paste0("/results_mh/", simfile))
+    
+    if(file.exists(file = paste0(f,"_1_trace.txt")) && file.exists(file = paste0(f,"_2_trace.txt")) && file.exists(file = paste0(f,"_3_trace.txt")) && file.exists(file = paste0(f,"_4_trace.txt"))){
+      
+      
+      ntrees = ntrees +1
+    
+       t<- read_trace(simfile)
+       print(simfile)
+     
+       df <- analyse_branches(t,simfile)
+       truetree <- get_truetree_mc(simfile)
+       truemod <- anlyze_truemodel(df,truetree)
+       
+      if (i==n_start){
+        true_model_df <- tibble(value=truemod) %>%
+           mutate(i = i)
+         print(true_model_df)
+       }
+       
+       else{
+        binded <- as_tibble(cbind(value=truemod,i=i))
+        true_model_df <- true_model_df %>%
+          add_row(binded)
+       }
+       
+       
+      }
+      
+  }
+ print(true_model_df, n=50)
+ 
+
+  write_csv(true_model_df,filesavename)
+  write.table(true_model_df , file = filesavename, sep=",", row.names=FALSE)
+  print(ntrees)
+ 
+}
+
+
+create_most_tot <- function(L,filesavename){
+  
+
+  length <- L 
+  n_most_tot = c()
+  n_start <- 0
+  n_end <- 49
+  ntrees = 0
+  for(i in n_start: n_end) {
+    sim <-paste0("sim",i)
+    simfile <- paste0(paste(sim,length,sep="."))
+    f <- paste0(getwd(),paste0("/results_mh/", simfile))
+    if(file.exists(file = paste0(f,"_1_trace.txt")) && file.exists(file = paste0(f,"_2_trace.txt")) && file.exists(file = paste0(f,"_3_trace.txt")) && file.exists(file = paste0(f,"_4_trace.txt"))){
+      
+      
+      ntrees = ntrees +1
+     
+       t<- read_trace(simfile)
+   
+       df <- analyse_branches(t,simfile)
+       truetree <- get_truetree_mc(simfile)
+
+       
+       n_most <- anlyze_most(df,truetree)
+       n_most_tot <-c(n_most_tot,n_most)
+      }
+      
+  }
+  write.csv(as_tibble(n_most_tot),filesavename, row.names = FALSE)
+
+  print(ntrees)
+
+}
+
+
+
+#analyse_mcmc(800,"800_most_tot.csv")
+#create_most_tot(500,"testy.csv")
+#create_most_tot(500,"500_most_tot.csv")
+#create_most_tot(200,"200_most_tot.csv")
+#true_mod_500.txt
+#true_model.800.csv
+
+#analyse_mcmc(200)
+``` 
+
+
